@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Moksha Patam Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f0f9ff;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      color: darkred;
+      margin-bottom: 10px;
+    }
+
+    .game-container {
+      position: relative;
+      display: inline-block;
+      margin: 20px auto;
+    }
+
+    #board {
+      width: 810px;   /* actual board width */
+      height: 1080px; /* actual board height */
+      display: block;
+      border: 5px solid #333;
+      border-radius: 10px;
+    }
+
+    .token {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid black;
+      transition: all 0.3s linear;
+      z-index: 10;
+    }
+
+    .red { background-color: red; }
+    .blue { background-color: blue; }
+
+    .controls { margin-top: 20px; }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      margin: 10px;
+    }
+
+    button:hover { background-color: #45a049; }
+
+    #status, #dice { font-size: 18px; margin: 10px; }
+
+    .dice-container {
+      display: inline-block;
+      margin: 10px;
+      font-size: 40px;
+    }
+
+    #diceValue {
+      display: inline-block;
+      width: 50px;
+      height: 50px;
+      line-height: 50px;
+      border: 2px solid #333;
+      border-radius: 10px;
+      background-color: white;
+      margin-left: 10px;
+      font-size: 22px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Moksha Patam 🎲</h1>
+  
+  <!-- Game Container -->
+  <div class="game-container">
+    <img src="kl.jpg" alt="Moksha Patam Board" id="board">
+    <div id="player1" class="token red"></div>
+    <div id="player2" class="token blue"></div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button onclick="rollDice()" id="rollBtn">Roll Dice 🎲</button>
+    <div class="dice-container">
+      Dice: <span id="diceValue">-</span>
+    </div>
+    <p id="status">Player 1's turn</p>
+  </div>
+
+  <script>
+    let currentPlayer = 1;
+    let positions = [1, 1];
+    const boardSquares = 108; // total squares
+
+    // Define exact pixel coordinates for each square
+    const squareCoords = [];
+    const imgWidth = 810, imgHeight = 1080;
+    const rows = 11, cols = 10;
+    const cellWidth = imgWidth / cols;
+    const cellHeight = imgHeight / rows;
+
+    for (let i = 0; i < boardSquares; i++) {
+      let row = Math.floor(i / cols);
+      let col = (row % 2 === 0) ? i % cols : cols - 1 - (i % cols);
+      let x = col * cellWidth + cellWidth / 2 - 15; // adjust token center
+      let y = imgHeight - (row * cellHeight + cellHeight / 2) - 15;
+      squareCoords[i + 1] = { x, y };
+    }
+
+    // Snakes & ladders: square -> destination
+    const snakes = { 17: 7, 33: 27, 65: 56, 61: 42, 81: 62, 91: 74, 89: 68 };
+    const ladders = { 5: 17, 9: 30, 24: 37, 39: 58, 77: 95, 100: 105, 28: 35 };
+
+    function rollDice() {
+      const rollBtn = document.getElementById("rollBtn");
+      rollBtn.disabled = true;
+
+      let diceValueSpan = document.getElementById("diceValue");
+      let count = 0;
+      let diceAnimation = setInterval(() => {
+        diceValueSpan.innerText = Math.floor(Math.random() * 6) + 1;
+        count++;
+        if (count > 10) {
+          clearInterval(diceAnimation);
+          let dice = Math.floor(Math.random() * 6) + 1;
+          diceValueSpan.innerText = dice;
+          updatePosition(dice);
+          rollBtn.disabled = false;
+        }
+      }, 100);
+    }
+
+    function updatePosition(dice) {
+      let startPos = positions[currentPlayer - 1];
+      let endPos = startPos + dice;
+
+      if (endPos > boardSquares) {
+        alert(Player ${currentPlayer} needs exactly ${boardSquares - startPos} to win!);
+        switchTurn();
+        return;
+      }
+
+      let step = startPos + 1;
+
+      function moveStep() {
+        if (step <= endPos) {
+          positions[currentPlayer - 1] = step;
+          moveToken(currentPlayer, step);
+          step++;
+          setTimeout(moveStep, 400);
+        } else {
+          // After reaching, check snakes or ladders
+          let finalPos = positions[currentPlayer - 1];
+          if (snakes[finalPos]) {
+            alert(🐍 Player ${currentPlayer} hit a snake at ${finalPos}, down to ${snakes[finalPos]});
+            positions[currentPlayer - 1] = snakes[finalPos];
+            moveToken(currentPlayer, positions[currentPlayer - 1]);
+          } else if (ladders[finalPos]) {
+            alert(🪜 Player ${currentPlayer} found a ladder at ${finalPos}, up to ${ladders[finalPos]});
+            positions[currentPlayer - 1] = ladders[finalPos];
+            moveToken(currentPlayer, positions[currentPlayer - 1]);
+          }
+
+          if (positions[currentPlayer - 1] === boardSquares) {
+            document.getElementById("status").innerText = 🎉 Player ${currentPlayer} wins!;
+            document.getElementById("rollBtn").disabled = true;
+            return;
+          }
+
+          switchTurn();
+        }
+      }
+
+      moveStep();
+    }
+
+    function switchTurn() {
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      document.getElementById("status").innerText = Player ${currentPlayer}'s turn;
+    }
+
+    function moveToken(player, pos) {
+      const token = document.getElementById("player" + player);
+      if (pos < 1) return;
+
+      const coord = squareCoords[pos];
+      token.style.left = coord.x + "px";
+      token.style.top = coord.y + "px";
+    }
+
+    // Initialize tokens
+    window.onload = () => {
+      moveToken(1, 1);
+      moveToken(2, 1);
+    };
+  </script>
+</body>
+</html>
